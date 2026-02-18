@@ -4,6 +4,7 @@ import time
 from datetime import datetime, timedelta
 import processor
 import math
+from io import BytesIO
 from database import (
     upload_file, 
     save_invoice_record, 
@@ -85,6 +86,26 @@ def sanitize_json(obj):
         if math.isnan(obj) or math.isinf(obj):
             return None
     return obj
+
+# --- 📊 EXCEL EXPORT HELPER ---
+def export_to_excel(dataframe, filename="export"):
+    """Convert DataFrame to Excel file and return as bytes."""
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        dataframe.to_excel(writer, sheet_name='Invoices', index=False)
+        
+        # Auto-format columns
+        workbook = writer.book
+        worksheet = writer.sheets['Invoices']
+        for idx, col in enumerate(dataframe.columns):
+            max_length = max(
+                dataframe[col].astype(str).str.len().max(),
+                len(col)
+            ) + 2
+            worksheet.column_dimensions[chr(65 + idx)].width = min(max_length, 50)
+    
+    output.seek(0)
+    return output.getvalue()
 
 # --- SAVE HELPER ---
 def save_and_log(vendor, date, total, cur, df, status, original_data, reason, role, risk_score, risk_level, stage):
@@ -681,17 +702,48 @@ if user_role in ["FINANCE_MANAGER", "AUDITOR"]:
 
         st.markdown("---")
         st.markdown("### 📄 Export Reports")
+        
+        # ✅ DOWNLOAD ALL INVOICES (EXCEL)
+        st.subheader("📥 Download All Invoices")
+        excel_all = export_to_excel(df)
+        st.download_button(
+            label="📊 Download All Invoices (EXCEL)",
+            data=excel_all,
+            file_name=f"all_invoices_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        
+        st.divider()
+        st.subheader("📋 Filtered Reports (CSV & EXCEL)")
+        
         exp1, exp2 = st.columns(2)
         if 'approval_stage' in df.columns:
             approved_report = df[df['approval_stage'] == "APPROVED"]
             csv_approved = approved_report.to_csv(index=False).encode('utf-8')
             exp1.download_button("📥 Download Approved Invoices (CSV)", csv_approved, "approved_invoices.csv", "text/csv")
+            
+            excel_approved = export_to_excel(approved_report, "approved_invoices")
+            exp2.download_button(
+                "📊 Download Approved Invoices (EXCEL)", 
+                excel_approved, 
+                f"approved_invoices_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
 
+        exp3, exp4 = st.columns(2)
         risk_cols = ['vendor_name', 'total_amount', 'risk_score', 'risk_level', 'confidence_score', 'flag_reason']
         valid_risk = [c for c in risk_cols if c in df.columns]
         risk_report = df[valid_risk]
         csv_risk = risk_report.to_csv(index=False).encode('utf-8')
-        exp2.download_button("📥 Download Risk Report (CSV)", csv_risk, "risk_report.csv", "text/csv")
+        exp3.download_button("📥 Download Risk Report (CSV)", csv_risk, "risk_report.csv", "text/csv")
+        
+        excel_risk = export_to_excel(risk_report, "risk_report")
+        exp4.download_button(
+            "📊 Download Risk Report (EXCEL)",
+            excel_risk,
+            f"risk_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
 
         st.markdown("### 📋 Recent Transactions")
         if 'days_pending' in df.columns:
