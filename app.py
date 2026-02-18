@@ -107,6 +107,44 @@ def export_to_excel(dataframe, filename="export"):
     output.seek(0)
     return output.getvalue()
 
+# --- 📊 INVOICE EXPORT WITH LINE ITEMS ---
+def export_invoice_with_items(invoice_summary, line_items_df):
+    """Export invoice summary and line items to Excel with multiple sheets."""
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        # Sheet 1: Invoice Summary
+        summary_df = pd.DataFrame([invoice_summary])
+        summary_df.to_excel(writer, sheet_name='Summary', index=False)
+        
+        # Sheet 2: Line Items (if available)
+        if not line_items_df.empty:
+            line_items_df.to_excel(writer, sheet_name='Line Items', index=False)
+        
+        # Auto-format columns for all sheets
+        workbook = writer.book
+        for sheet_name in writer.sheets:
+            worksheet = writer.sheets[sheet_name]
+            # Get the dataframe for this sheet
+            if sheet_name == 'Summary':
+                df = summary_df
+            else:
+                df = line_items_df
+            
+            # Format column widths
+            for idx, col in enumerate(df.columns):
+                try:
+                    max_length = max(
+                        df[col].astype(str).str.len().max(),
+                        len(col)
+                    ) + 2
+                    col_letter = chr(65 + idx) if idx < 26 else chr(64 + idx // 26) + chr(65 + idx % 26)
+                    worksheet.column_dimensions[col_letter].width = min(max_length, 50)
+                except:
+                    pass
+    
+    output.seek(0)
+    return output.getvalue()
+
 # --- SAVE HELPER ---
 def save_and_log(vendor, date, total, cur, df, status, original_data, reason, role, risk_score, risk_level, stage):
     approval_ts = None
@@ -296,6 +334,49 @@ if 'data' in st.session_state:
     
     with col2:
         st.subheader("📝 Audit Results")
+        
+        # ✅ DOWNLOAD CURRENT INVOICE AS CSV/EXCEL
+        down_col1, down_col2 = st.columns(2)
+        
+        # Prepare invoice summary data for download
+        invoice_export = {
+            "Vendor": data.get("vendor_name"),
+            "Invoice Date": data.get("invoice_date"),
+            "Total Amount ($)": data.get("total_amount"),
+            "Currency": data.get("currency"),
+            "Validation Status": data.get("validation_status"),
+            "Risk Level": data.get("risk_level"),
+            "Risk Score": data.get("risk_score"),
+            "AI Confidence": data.get("confidence_score"),
+            "Flag Reason": data.get("flag_reason"),
+            "Approval Stage": data.get("approval_stage"),
+            "Reviewed By": data.get("reviewed_by"),
+            "Approved By": data.get("approved_by"),
+            "AI Version": data.get("ai_version", CURRENT_AI_VERSION)
+        }
+        
+        # Prepare line items for Excel export
+        line_items_df = pd.DataFrame(data.get("line_items", []))
+        
+        with down_col1:
+            csv_data = pd.DataFrame([invoice_export]).to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 Download as CSV",
+                data=csv_data,
+                file_name=f"invoice_{data.get('vendor_name', 'unknown').replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv"
+            )
+        
+        with down_col2:
+            excel_data = export_invoice_with_items(invoice_export, line_items_df)
+            st.download_button(
+                label="📊 Download as EXCEL",
+                data=excel_data,
+                file_name=f"invoice_{data.get('vendor_name', 'unknown').replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+        
+        st.divider()
         
         # --- 3️⃣ VENDOR INSIGHTS PANEL ---
         vendor_name = data.get("vendor_name")
