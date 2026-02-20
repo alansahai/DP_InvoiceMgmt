@@ -49,7 +49,25 @@ def can_upload(): return user_role != "AUDITOR"
 def can_approve(): return user_role == "FINANCE_MANAGER"
 
 st.title("🛡️ AI-Powered Invoice Auditor")
+st.subheader("📩 Automatic Gmail Invoice Reader")
 
+if st.button("Fetch Invoices from Gmail"):
+    
+    st.info("Connecting to Gmail...")
+
+    invoices = read_invoice_emails()
+
+    if not invoices:
+        st.warning("No unread invoice emails found.")
+    else:
+        for filename, file_bytes in invoices:
+            
+            st.write(f"Processing {filename}...")
+            
+            result = processor.process_invoice(file_bytes)
+            save_invoice_record(result)
+
+        st.success("All invoices processed successfully!")
 # --- 🎨 VISUAL BADGE MAPPING ---
 def get_stage_badge(stage):
     badges = {
