@@ -20,7 +20,7 @@ for i in range(1, 10):  # Support up to 9 API keys
         API_KEYS.append(key)
 
 if not API_KEYS:
-    raise ValueError("❌ No GOOGLE_API_KEY found in .env file. Add GOOGLE_API_KEY, GOOGLE_API_KEY_2, etc.")
+    API_KEY="AIzaSyCMxhxQJH4D8hBHTcMUyheyW6N-Ke6iWlg"
 
 print(f"🔑 Loaded {len(API_KEYS)} API key(s) for round-robin scheduling")
 
