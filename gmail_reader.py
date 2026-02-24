@@ -1,17 +1,39 @@
-import os
 import base64
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
+import streamlit as st
+from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 
+
 def authenticate_gmail():
-    flow = InstalledAppFlow.from_client_secrets_file(
-        'credentials.json', SCOPES)
-    creds = flow.run_local_server(port=0)
+    # Build client config from Streamlit Secrets
+    client_config = {
+        "web": {
+            "client_id": st.secrets["gmail"]["client_id"],
+            "client_secret": st.secrets["gmail"]["client_secret"],
+            "auth_uri": st.secrets["gmail"]["auth_uri"],
+            "token_uri": st.secrets["gmail"]["token_uri"],
+            "auth_provider_x509_cert_url": st.secrets["gmail"]["auth_provider_x509_cert_url"],
+            "redirect_uris": st.secrets["gmail"]["redirect_uris"],
+        }
+    }
+
+    flow = Flow.from_client_config(client_config, SCOPES)
+    flow.redirect_uri = st.secrets["gmail"]["redirect_uris"][0]
+
+    # If no credentials in session, start OAuth flow
+    if "credentials" not in st.session_state:
+        auth_url, _ = flow.authorization_url(prompt='consent')
+        st.markdown(f"[Click here to authenticate Gmail]({auth_url})")
+        st.stop()
+
+    # Use stored credentials
+    creds = st.session_state["credentials"]
     service = build('gmail', 'v1', credentials=creds)
     return service
+
+
 def read_invoice_emails():
     service = authenticate_gmail()
 
