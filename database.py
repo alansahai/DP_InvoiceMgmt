@@ -1,15 +1,22 @@
-import os
+import streamlit as st
 from supabase import create_client, Client
-from dotenv import load_dotenv
 
-# Load keys from .env file
-load_dotenv()
+# ---------------------------------------------------
+# SECURE SUPABASE CONNECTION (Works on Streamlit Cloud)
+# ---------------------------------------------------
 
-url: str = os.environ.get("SUPABASE_URL")
-key: str = os.environ.get("SUPABASE_KEY")
+try:
+    # First try Streamlit Secrets (for deployed app)
+    url = st.secrets["SUPABASE_URL"]
+    key = st.secrets["SUPABASE_KEY"]
+except Exception:
+    # Optional: fallback for local development (if needed)
+    import os
+    url = os.getenv("SUPABASE_URL")
+    key = os.getenv("SUPABASE_KEY")
 
 if not url or not key:
-    raise ValueError("Missing Supabase keys in .env file")
+    raise ValueError("❌ Supabase credentials not found. Add them in Streamlit Secrets.")
 
 supabase: Client = create_client(url, key)
 
