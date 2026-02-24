@@ -2,7 +2,6 @@ import base64
 import streamlit as st
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
-from google.oauth2.credentials import Credentials
 
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 
@@ -10,17 +9,17 @@ SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 def authenticate_gmail():
     client_config = {
         "web": {
-            "client_id": st.secrets["gmail"]["client_id"],
-            "client_secret": st.secrets["gmail"]["client_secret"],
-            "auth_uri": st.secrets["gmail"]["auth_uri"],
-            "token_uri": st.secrets["gmail"]["token_uri"],
-            "auth_provider_x509_cert_url": st.secrets["gmail"]["auth_provider_x509_cert_url"],
-            "redirect_uris": st.secrets["gmail"]["redirect_uris"],
+            "client_id": st.secrets["gmail"]["web"]["client_id"],
+            "client_secret": st.secrets["gmail"]["web"]["client_secret"],
+            "auth_uri": st.secrets["gmail"]["web"]["auth_uri"],
+            "token_uri": st.secrets["gmail"]["web"]["token_uri"],
+            "auth_provider_x509_cert_url": st.secrets["gmail"]["web"]["auth_provider_x509_cert_url"],
+            "redirect_uris": st.secrets["gmail"]["web"]["redirect_uris"],
         }
     }
 
     flow = Flow.from_client_config(client_config, SCOPES)
-    flow.redirect_uri = st.secrets["gmail"]["redirect_uris"][0]
+    flow.redirect_uri = st.secrets["gmail"]["web"]["redirect_uris"][0]
 
     query_params = st.query_params
 
@@ -70,16 +69,19 @@ def read_invoice_emails():
             filename = part.get('filename')
 
             if filename:
-                attachment_id = part['body']['attachmentId']
-                attachment = service.users().messages().attachments().get(
-                    userId='me',
-                    messageId=msg['id'],
-                    id=attachment_id
-                ).execute()
+                attachment_id = part['body'].get('attachmentId')
 
-                file_data = base64.urlsafe_b64decode(
-                    attachment['data'])
+                if attachment_id:
+                    attachment = service.users().messages().attachments().get(
+                        userId='me',
+                        messageId=msg['id'],
+                        id=attachment_id
+                    ).execute()
 
-                invoices.append((filename, file_data))
+                    file_data = base64.urlsafe_b64decode(
+                        attachment['data']
+                    )
+
+                    invoices.append((filename, file_data))
 
     return invoices
