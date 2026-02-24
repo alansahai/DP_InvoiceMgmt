@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard · InvoicePilot{% endblock %}
+{% block header_title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="row g-3 mb-4">
+    <div class="col-md-6 col-xl-3">
+        <div class="metric-card animate-rise">
+            <p class="metric-label">Total Processed</p>
+            <h2>{{ metrics.total_processed }}</h2>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="metric-card animate-rise delay-1">
+            <p class="metric-label">Flagged</p>
+            <h2>{{ metrics.flagged }}</h2>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="metric-card animate-rise delay-2">
+            <p class="metric-label">Duplicates</p>
+            <h2>{{ metrics.duplicates }}</h2>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="metric-card animate-rise delay-3">
+            <p class="metric-label">Avg Processing (min)</p>
+            <h2>{{ metrics.avg_processing_time_min }}</h2>
+        </div>
+    </div>
+</div>
+
+<div class="card soft-card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Ingestion Health</span>
+        {% if current_user.role in ['ADMIN', 'AP_CLERK'] %}
+        <form action="/api/ingest-email" method="post">
+            <button class="btn btn-primary btn-sm"><i class="bi bi-envelope-arrow-down"></i> Ingest Email</button>
+        </form>
+        {% endif %}
+    </div>
+    <div class="card-body row g-3">
+        <div class="col-md-3">
+            <div class="health-box"><small>Last Poll</small>
+                <div>{{ health.last_poll or 'N/A' }}</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="health-box"><small>Last Success</small>
+                <div>{{ health.last_success or 'N/A' }}</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="health-box"><small>Last Error</small>
+                <div class="text-danger">{{ health.last_error or 'N/A' }}</div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="health-box"><small>Failed Count</small>
+                <div>{{ health.failed_count }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card soft-card">
+    <div class="card-header">Recent Invoices</div>
+    {% if invoices %}
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Vendor</th>
+                    <th>Total</th>
+                    <th>Compliance</th>
+                    <th>Risk</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in invoices %}
+                {% set compliance = row.ai_raw_data.compliance_score if row.ai_raw_data and
+                row.ai_raw_data.compliance_score else 0 %}
+                <tr>
+                    <td>{{ row.id }}</td>
+                    <td>{{ row.vendor_name or '-' }}</td>
+                    <td>{{ row.total_amount or '-' }}</td>
+                    <td style="min-width:170px;">
+                        <div class="progress" role="progressbar" aria-valuenow="{{ compliance }}" aria-valuemin="0"
+                            aria-valuemax="100">
+                            <div class="progress-bar bg-info" data-progress="{{ compliance }}">{{ compliance }}</div>
+                        </div>
+                    </td>
+                    <td>
+                        <span
+                            class="badge {% if row.risk_level == 'HIGH' %}text-bg-danger{% elif row.risk_level == 'MEDIUM' %}text-bg-warning{% else %}text-bg-success{% endif %}">
+                            {{ row.risk_level or '-' }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge text-bg-secondary">{{ row.approval_stage or '-' }}</span>
+                    </td>
+                    <td><a class="btn btn-sm btn-outline-primary" href="/invoice/{{ row.id }}">View</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">No records found</div>
+    {% endif %}
+</div>
+{% endblock %}

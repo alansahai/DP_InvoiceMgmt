@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}Invoice Detail · InvoicePilot{% endblock %}
+{% block header_title %}Invoice Detail{% endblock %}
+
+{% block content %}
+{% if not invoice %}
+<div class="alert alert-warning">Invoice not found.</div>
+{% else %}
+{% set confidence = ((invoice.confidence_score or 0) * 100) | round(1) %}
+{% set compliance = invoice.ai_raw_data.compliance_score if invoice.ai_raw_data and invoice.ai_raw_data.compliance_score
+else 0 %}
+{% set reasons = invoice.ai_raw_data.reason_codes if invoice.ai_raw_data and invoice.ai_raw_data.reason_codes else [] %}
+
+<div class="row g-3 mb-3">
+    <div class="col-lg-8">
+        <div class="card soft-card">
+            <div class="card-header d-flex justify-content-between">
+                <span><i class="bi bi-file-earmark-text"></i> Invoice #{{ invoice.id }}</span>
+                <span
+                    class="badge {% if invoice.risk_level == 'HIGH' %}text-bg-danger{% elif invoice.risk_level == 'MEDIUM' %}text-bg-warning{% else %}text-bg-success{% endif %}">
+                    {% if invoice.risk_level == 'HIGH' %}⚠{% elif invoice.risk_level == 'MEDIUM' %}◔{% else %}✓{% endif
+                    %} {{ invoice.risk_level or 'N/A' }}
+                </span>
+            </div>
+            <div class="card-body row">
+                <div class="col-md-6 mb-2"><strong>Vendor:</strong> {{ invoice.vendor_name or '-' }}</div>
+                <div class="col-md-6 mb-2"><strong>Date:</strong> {{ invoice.invoice_date or '-' }}</div>
+                <div class="col-md-6 mb-2"><strong>Total:</strong> {{ invoice.total_amount or '-' }} {{ invoice.currency
+                    or '' }}</div>
+                <div class="col-md-6 mb-2"><strong>Status:</strong> <span class="badge text-bg-secondary">{{
+                        invoice.approval_stage or '-' }}</span></div>
+                <div class="col-md-12 mb-2"><strong>Flag Reason:</strong> {{ invoice.flag_reason or '-' }}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card soft-card trust-panel">
+            <div class="card-header"><i class="bi bi-shield-check"></i> Trust Panel</div>
+            <div class="card-body d-grid gap-3">
+                <div>
+                    <small>Extraction Confidence</small>
+                    <div class="progress mt-1">
+                        <div class="progress-bar bg-primary" data-progress="{{ confidence }}">{{ confidence }}%</div>
+                    </div>
+                </div>
+                <div>
+                    <small>Compliance Score</small>
+                    <div class="progress mt-1">
+                        <div class="progress-bar bg-info" data-progress="{{ compliance }}">{{ compliance }}</div>
+                    </div>
+                </div>
+                <div>
+                    <small>Risk Score</small>
+                    <div class="progress mt-1">
+                        <div class="progress-bar {% if invoice.risk_score >= 60 %}bg-danger{% elif invoice.risk_score >= 30 %}bg-warning{% else %}bg-success{% endif %}"
+                            data-progress="{{ invoice.risk_score or 0 }}">{{ invoice.risk_score or 0 }}</div>
+                    </div>
+                </div>
+                <div>
+                    <small>Reason Codes</small><br>
+                    {% for code in reasons %}
+                    <span class="chip">{{ code }}</span>
+                    {% endfor %}
+                    {% if not reasons %}<span>-</span>{% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if current_user.role in ['ADMIN', 'FINANCE_MANAGER'] %}
+<div class="card soft-card">
+    <div class="card-header">Route Invoice</div>
+    <div class="card-body">
+        <form id="routeForm" class="row g-2">
+            <div class="col-md-6">
+                <select class="form-select" id="routeStage">
+                    <option value="UPLOADED">UPLOADED</option>
+                    <option value="REVIEWED">REVIEWED</option>
+                    <option value="READY_FOR_FINANCE_MANAGER">READY_FOR_FINANCE_MANAGER</option>
+                    <option value="APPROVED">APPROVED</option>
+                    <option value="REJECTED">REJECTED</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <input class="form-control" id="reviewedBy" placeholder="reviewed by"
+                    value="{{ current_user.email }}" />
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-primary w-100" type="submit">Update</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const form = document.getElementById('routeForm');
+    if (form) {
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const route_stage = document.getElementById('routeStage').value;
+            const reviewed_by = document.getElementById('reviewedBy').value || null;
+            const response = await fetch('/api/route/{{ invoice.id }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ route_stage, reviewed_by })
+            });
+            if (response.ok) {
+                location.reload();
+            } else {
+                const data = await response.json();
+                alert(data.detail || 'Route update failed');
+            }
+        });
+    }
+</script>
+{% endblock %}

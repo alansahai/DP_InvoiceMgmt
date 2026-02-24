@@ -1,7 +1,10 @@
-streamlit
-google-generativeai
+fastapi
+uvicorn[standard]
+jinja2
+python-multipart
 python-dotenv
-pandas
 supabase
-python-dateutil
-openpyxl
+google-generativeai
+python-jose[cryptography]
+passlib[bcrypt]
+email-validator
