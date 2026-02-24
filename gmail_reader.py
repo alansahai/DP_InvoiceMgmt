@@ -24,14 +24,19 @@ def authenticate_gmail():
 
     query_params = st.query_params
 
-    # Step 1: If Google sent back authorization code
+    # 🔥 DEBUG VERSION — shows real Google error
     if "code" in query_params:
-        flow.fetch_token(code=query_params["code"])
-        credentials = flow.credentials
-        st.session_state["credentials"] = credentials
-        st.query_params.clear()
+        try:
+            flow.fetch_token(code=query_params["code"])
+            credentials = flow.credentials
+            st.session_state["credentials"] = credentials
+            st.query_params.clear()
+        except Exception as e:
+            st.error("FULL GOOGLE ERROR:")
+            st.write(str(e))
+            st.stop()
 
-    # Step 2: If not authenticated yet
+    # If not authenticated yet
     if "credentials" not in st.session_state:
         auth_url, _ = flow.authorization_url(prompt='consent')
         st.markdown(f"[Click here to authenticate Gmail]({auth_url})")
