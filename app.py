@@ -60,11 +60,17 @@ if st.button("Fetch Invoices from Gmail"):
     if not invoices:
         st.warning("No unread invoice emails found.")
     else:
-        for filename, file_bytes in invoices:
-            
-            st.write(f"Processing {filename}...")
+        processed_count = 0
 
-            # 🔍 Detect MIME type from filename
+        for filename, file_bytes in invoices:
+
+            # ✅ Only process files containing 'invoice' in name
+            if "invoice" not in filename.lower():
+                continue
+
+            st.write(f"📄 Processing {filename}...")
+
+            # 🔍 Detect MIME type
             if filename.lower().endswith(".pdf"):
                 mime_type = "application/pdf"
             elif filename.lower().endswith(".png"):
@@ -78,18 +84,32 @@ if st.button("Fetch Invoices from Gmail"):
             try:
                 result = processor.process_invoice(file_bytes, mime_type)
 
-                if result:
-                    result['ai_version'] = CURRENT_AI_VERSION
-                    save_invoice_record(result, None, "SYSTEM")
-                    st.success(f"{filename} processed successfully!")
-                else:
+                if not result:
                     st.error(f"AI failed to process {filename}")
+                    continue
+
+                # ✅ Attach AI version
+                result['ai_version'] = CURRENT_AI_VERSION
+
+                # ✅ Save to DB
+                save_invoice_record(result, None, "SYSTEM")
+
+                processed_count += 1
+
+                st.success(f"✅ {filename} processed successfully!")
+
+                # 🔥 SHOW EXTRACTED DETAILS IMMEDIATELY
+                with st.expander(f"📊 Extracted Data - {filename}", expanded=False):
+                    st.json(result)
 
             except Exception as e:
                 st.error(f"Error processing {filename}")
                 st.write(str(e))
 
-        st.success("All invoices processed successfully!")
+        if processed_count == 0:
+            st.warning("No valid invoice files found in unread emails.")
+        else:
+            st.success(f"🎉 {processed_count} invoice(s) processed successfully!")
 # --- 🎨 VISUAL BADGE MAPPING ---
 def get_stage_badge(stage):
     badges = {
