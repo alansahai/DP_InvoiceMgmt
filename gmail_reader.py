@@ -2,12 +2,12 @@ import base64
 import streamlit as st
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
+from google.oauth2.credentials import Credentials
 
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 
 
 def authenticate_gmail():
-    # Build client config from Streamlit Secrets
     client_config = {
         "web": {
             "client_id": st.secrets["gmail"]["client_id"],
@@ -22,13 +22,21 @@ def authenticate_gmail():
     flow = Flow.from_client_config(client_config, SCOPES)
     flow.redirect_uri = st.secrets["gmail"]["redirect_uris"][0]
 
-    # If no credentials in session, start OAuth flow
+    query_params = st.query_params
+
+    # Step 1: If Google sent back authorization code
+    if "code" in query_params:
+        flow.fetch_token(code=query_params["code"])
+        credentials = flow.credentials
+        st.session_state["credentials"] = credentials
+        st.query_params.clear()
+
+    # Step 2: If not authenticated yet
     if "credentials" not in st.session_state:
         auth_url, _ = flow.authorization_url(prompt='consent')
         st.markdown(f"[Click here to authenticate Gmail]({auth_url})")
         st.stop()
 
-    # Use stored credentials
     creds = st.session_state["credentials"]
     service = build('gmail', 'v1', credentials=creds)
     return service
