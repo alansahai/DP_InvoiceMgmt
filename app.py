@@ -63,9 +63,31 @@ if st.button("Fetch Invoices from Gmail"):
         for filename, file_bytes in invoices:
             
             st.write(f"Processing {filename}...")
-            
-            result = processor.process_invoice(file_bytes)
-            save_invoice_record(result)
+
+            # 🔍 Detect MIME type from filename
+            if filename.lower().endswith(".pdf"):
+                mime_type = "application/pdf"
+            elif filename.lower().endswith(".png"):
+                mime_type = "image/png"
+            elif filename.lower().endswith((".jpg", ".jpeg")):
+                mime_type = "image/jpeg"
+            else:
+                st.warning(f"Unsupported file type: {filename}")
+                continue
+
+            try:
+                result = processor.process_invoice(file_bytes, mime_type)
+
+                if result:
+                    result['ai_version'] = CURRENT_AI_VERSION
+                    save_invoice_record(result, None, "SYSTEM")
+                    st.success(f"{filename} processed successfully!")
+                else:
+                    st.error(f"AI failed to process {filename}")
+
+            except Exception as e:
+                st.error(f"Error processing {filename}")
+                st.write(str(e))
 
         st.success("All invoices processed successfully!")
 # --- 🎨 VISUAL BADGE MAPPING ---
