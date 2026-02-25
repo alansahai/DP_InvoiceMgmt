@@ -84,7 +84,6 @@ if st.button("Fetch Invoices from Gmail"):
 
             try:
                 result = processor.process_invoice(file_bytes, mime_type)
-         result = processor.process_invoice(file_bytes, mime_type)
 
 if result:
     st.success("Processed Successfully")
