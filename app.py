@@ -84,67 +84,7 @@ if st.button("Fetch Invoices from Gmail"):
 
             try:
                 result = processor.process_invoice(file_bytes, mime_type)
-                import pandas as pd
-from io import BytesIO
-
-if result and "data" in result:
-
-    invoice_data = result["data"]
-
-    st.success("✅ Invoice Processed Successfully!")
-
-    # -----------------------------
-    # Convert Invoice Data to Table
-    # -----------------------------
-    summary_dict = {
-        "Vendor Name": invoice_data.get("vendor_name"),
-        "Invoice Number": invoice_data.get("invoice_number"),
-        "Invoice Date": invoice_data.get("invoice_date"),
-        "Due Date": invoice_data.get("due_date"),
-        "Currency": invoice_data.get("currency"),
-        "Subtotal": invoice_data.get("subtotal"),
-        "Tax Amount": invoice_data.get("tax_amount"),
-        "Total Amount": invoice_data.get("total_amount"),
-        "Payment Terms": invoice_data.get("payment_terms"),
-        "Risk Score": result.get("risk_score"),
-        "Fraud Flag": result.get("fraud_flag")
-    }
-
-    summary_df = pd.DataFrame(list(summary_dict.items()), columns=["Field", "Value"])
-
-    st.subheader("📊 Invoice Summary (Excel View)")
-    st.dataframe(summary_df, use_container_width=True)
-
-    # -----------------------------
-    # Line Items (if available)
-    # -----------------------------
-    if "line_items" in invoice_data:
-        line_items_df = pd.DataFrame(invoice_data["line_items"])
-
-        st.subheader("📦 Line Items")
-        st.dataframe(line_items_df, use_container_width=True)
-    else:
-        line_items_df = pd.DataFrame()
-
-    # -----------------------------
-    # Generate Excel File
-    # -----------------------------
-    output = BytesIO()
-
-    with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        summary_df.to_excel(writer, sheet_name="Summary", index=False)
-
-        if not line_items_df.empty:
-            line_items_df.to_excel(writer, sheet_name="Line Items", index=False)
-
-    excel_data = output.getvalue()
-
-    st.download_button(
-        label="📥 Download Invoice as Excel",
-        data=excel_data,
-        file_name=f"gmail_invoice_{invoice_data.get('invoice_number', 'invoice')}.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+         
 
                 if not result:
                     st.error(f"AI failed to process {filename}")
