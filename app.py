@@ -1,7 +1,6 @@
 from gmail_reader import read_invoice_emails
 import streamlit as st
 import pandas as pd
-from openpyxl import Workbook
 import time
 from datetime import datetime, timedelta
 import processor
@@ -61,17 +60,11 @@ if st.button("Fetch Invoices from Gmail"):
     if not invoices:
         st.warning("No unread invoice emails found.")
     else:
-        processed_count = 0
-
         for filename, file_bytes in invoices:
+            
+            st.write(f"Processing {filename}...")
 
-            # ✅ Only process files containing 'invoice' in name
-            if "invoice" not in filename.lower():
-                continue
-
-            st.write(f"📄 Processing {filename}...")
-
-            # 🔍 Detect MIME type
+            # 🔍 Detect MIME type from filename
             if filename.lower().endswith(".pdf"):
                 mime_type = "application/pdf"
             elif filename.lower().endswith(".png"):
@@ -85,32 +78,18 @@ if st.button("Fetch Invoices from Gmail"):
             try:
                 result = processor.process_invoice(file_bytes, mime_type)
 
-                if not result:
+                if result:
+                    result['ai_version'] = CURRENT_AI_VERSION
+                    save_invoice_record(result, None, "SYSTEM")
+                    st.success(f"{filename} processed successfully!")
+                else:
                     st.error(f"AI failed to process {filename}")
-                    continue
-
-                # ✅ Attach AI version
-                result['ai_version'] = CURRENT_AI_VERSION
-
-                # ✅ Save to DB
-                save_invoice_record(result, None, "SYSTEM")
-
-                processed_count += 1
-
-                st.success(f"✅ {filename} processed successfully!")
-
-                # 🔥 SHOW EXTRACTED DETAILS IMMEDIATELY
-                with st.expander(f"📊 Extracted Data - {filename}", expanded=False):
-                    st.json(result)
 
             except Exception as e:
                 st.error(f"Error processing {filename}")
                 st.write(str(e))
 
-        if processed_count == 0:
-            st.warning("No valid invoice files found in unread emails.")
-        else:
-            st.success(f"🎉 {processed_count} invoice(s) processed successfully!")
+        st.success("All invoices processed successfully!")
 # --- 🎨 VISUAL BADGE MAPPING ---
 def get_stage_badge(stage):
     badges = {
