@@ -85,58 +85,6 @@ if st.button("Fetch Invoices from Gmail"):
             try:
                 result = processor.process_invoice(file_bytes, mime_type)
 
-if result:
-    st.success("Processed Successfully")
-    st.json(result)
-
-    # -----------------------------
-    # Convert Result to Excel
-    # -----------------------------
-    import pandas as pd
-    from io import BytesIO
-
-    invoice_data = result
-
-    summary_dict = {
-        "Vendor Name": invoice_data.get("vendor_name"),
-        "Invoice Number": invoice_data.get("invoice_number"),
-        "Invoice Date": invoice_data.get("invoice_date"),
-        "Due Date": invoice_data.get("due_date"),
-        "Currency": invoice_data.get("currency"),
-        "Subtotal": invoice_data.get("subtotal"),
-        "Tax Amount": invoice_data.get("tax_amount"),
-        "Total Amount": invoice_data.get("total_amount"),
-        "Payment Terms": invoice_data.get("payment_terms"),
-        "Risk Score": invoice_data.get("risk_score"),
-        "Fraud Flag": invoice_data.get("fraud_flag")
-    }
-
-    summary_df = pd.DataFrame(
-        list(summary_dict.items()),
-        columns=["Field", "Value"]
-    )
-
-    line_items_df = pd.DataFrame(
-        invoice_data.get("line_items", [])
-    )
-
-    output = BytesIO()
-
-    with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        summary_df.to_excel(writer, sheet_name="Summary", index=False)
-
-        if not line_items_df.empty:
-            line_items_df.to_excel(writer, sheet_name="Line Items", index=False)
-
-    output.seek(0)
-
-    st.download_button(
-        label="📥 Download Result as Excel",
-        data=output.getvalue(),
-        file_name=f"invoice_{invoice_data.get('invoice_number', 'invoice')}.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
-
                 if not result:
                     st.error(f"AI failed to process {filename}")
                     continue
