@@ -61,7 +61,12 @@ if st.button("Fetch Invoices from Gmail"):
         st.warning("No unread invoice emails found.")
     else:
         for filename, file_bytes in invoices:
-            
+
+    # ✅ Only process files containing "invoice" in name
+    if "invoice" not in filename.lower():
+        st.info(f"Skipping {filename} (Not an invoice file)")
+        continue
+        
             st.write(f"Processing {filename}...")
 
             # 🔍 Detect MIME type from filename
