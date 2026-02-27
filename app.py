@@ -54,13 +54,12 @@ st.subheader("📩 Automatic Gmail Invoice Reader")
 if st.button("Fetch Invoices from Gmail"):
     
     st.info("Connecting to Gmail...")
-
     invoices = read_invoice_emails()
 
     if not invoices:
         st.warning("No unread emails found.")
     else:
-        # ✅ Filter only files named invoice (case insensitive)
+        # ✅ Strictly filter invoice.pdf
         invoice_files = [
             (filename, file_bytes)
             for filename, file_bytes in invoices
@@ -70,44 +69,35 @@ if st.button("Fetch Invoices from Gmail"):
         if not invoice_files:
             st.warning("No file named 'invoice.pdf' found.")
         else:
-            for filename, file_bytes in invoice_files:
+            filename, file_bytes = invoice_files[0]
 
-                st.write(f"Processing {filename}...")
+            st.write(f"Processing {filename}...")
 
+            try:
                 mime_type = "application/pdf"
+                data = processor.process_invoice(file_bytes, mime_type)
 
-                try:
-                    result = processor.process_invoice(file_bytes, mime_type)
+                if not data:
+                    st.error("AI processing failed.")
+                    st.stop()
 
-                    if result:
-                        result['ai_version'] = CURRENT_AI_VERSION
-                        save_invoice_record(result, None, "SYSTEM")
+                # ✅ Save AI version
+                data['ai_version'] = CURRENT_AI_VERSION
 
-                        st.success(f"{filename} processed successfully!")
+                # ✅ Save into session (VERY IMPORTANT)
+                st.session_state['data'] = data
+                st.session_state['file_bytes'] = file_bytes
+                st.session_state['mime_type'] = mime_type
+                st.session_state['url'] = None  # No public URL for Gmail
+                st.session_state['audit_mode'] = False
 
-                        # ✅ Convert result to DataFrame
-                        result_df = pd.DataFrame([result])
+                st.success("Invoice processed successfully!")
+                time.sleep(1)
+                st.rerun()
 
-                        # ✅ Show in Streamlit
-                        st.subheader("📊 Extracted Invoice Data")
-                        st.dataframe(result_df)
-
-                        # ✅ Create Excel file
-                        excel_data = export_to_excel(result_df)
-
-                        st.download_button(
-                            label="📥 Download Result as Excel",
-                            data=excel_data,
-                            file_name="invoice_result.xlsx",
-                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                        )
-
-                    else:
-                        st.error("AI failed to process invoice.")
-
-                except Exception as e:
-                    st.error("Error processing invoice")
-                    st.write(str(e))
+            except Exception as e:
+                st.error("Error processing invoice")
+                st.write(str(e))
 
         st.success("All invoices processed successfully!")
 # --- 🎨 VISUAL BADGE MAPPING ---
