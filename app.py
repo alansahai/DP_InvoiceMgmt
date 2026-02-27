@@ -357,10 +357,29 @@ if 'data' in st.session_state:
     
     with col1:
         st.subheader("Original Document")
-        if "pdf" in st.session_state['url']:
-             st.markdown(f"[View PDF]({st.session_state['url']})")
-        else:
-            st.image(st.session_state['url'], use_container_width=True)
+
+url = st.session_state.get("url")
+file_bytes = st.session_state.get("file_bytes")
+mime_type = st.session_state.get("mime_type")
+
+# If uploaded file (has URL)
+if url and isinstance(url, str):
+    if "pdf" in url.lower():
+        st.markdown(f"[View PDF]({url})")
+    else:
+        st.image(url, use_container_width=True)
+
+# If Gmail file (no URL, only bytes)
+elif file_bytes:
+    if mime_type == "application/pdf":
+        st.download_button(
+            "📄 Download Original PDF",
+            data=file_bytes,
+            file_name="invoice.pdf",
+            mime="application/pdf"
+        )
+    else:
+        st.write("Preview not available.")
             
         if can_edit() and 'file_bytes' in st.session_state:
             st.markdown("---")
