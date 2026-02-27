@@ -59,7 +59,6 @@ if st.button("Fetch Invoices from Gmail"):
     if not invoices:
         st.warning("No unread emails found.")
     else:
-        # ✅ Strictly filter invoice.pdf
         invoice_files = [
             (filename, file_bytes)
             for filename, file_bytes in invoices
@@ -81,14 +80,14 @@ if st.button("Fetch Invoices from Gmail"):
                     st.error("AI processing failed.")
                     st.stop()
 
-                # ✅ Save AI version
+                # Add AI version
                 data['ai_version'] = CURRENT_AI_VERSION
 
-                # ✅ Save into session (VERY IMPORTANT)
+                # Save into session like upload flow
                 st.session_state['data'] = data
                 st.session_state['file_bytes'] = file_bytes
                 st.session_state['mime_type'] = mime_type
-                st.session_state['url'] = None  # No public URL for Gmail
+                st.session_state['url'] = None
                 st.session_state['audit_mode'] = False
 
                 st.success("Invoice processed successfully!")
