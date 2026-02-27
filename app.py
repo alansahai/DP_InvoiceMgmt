@@ -356,7 +356,7 @@ if 'data' in st.session_state:
     col1, col2 = st.columns([1, 1.5])
     
     with col1:
-    st.subheader("Original Document")
+        st.subheader("Original Document")
 
     url = st.session_state.get("url")
     file_bytes = st.session_state.get("file_bytes")
