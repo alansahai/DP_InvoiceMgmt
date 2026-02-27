@@ -58,41 +58,56 @@ if st.button("Fetch Invoices from Gmail"):
     invoices = read_invoice_emails()
 
     if not invoices:
-        st.warning("No unread invoice emails found.")
+        st.warning("No unread emails found.")
     else:
-        for filename, file_bytes in invoices:
+        # ✅ Filter only files named invoice (case insensitive)
+        invoice_files = [
+            (filename, file_bytes)
+            for filename, file_bytes in invoices
+            if filename.lower() == "invoice.pdf"
+        ]
 
-            # ✅ Only process files containing "invoice" in name
-            if "invoice" not in filename.lower():
-                st.info(f"Skipping {filename} (Not an invoice file)")
-                continue
-            
-            st.write(f"Processing {filename}...")
+        if not invoice_files:
+            st.warning("No file named 'invoice.pdf' found.")
+        else:
+            for filename, file_bytes in invoice_files:
 
-            # 🔍 Detect MIME type from filename
-            if filename.lower().endswith(".pdf"):
+                st.write(f"Processing {filename}...")
+
                 mime_type = "application/pdf"
-            elif filename.lower().endswith(".png"):
-                mime_type = "image/png"
-            elif filename.lower().endswith((".jpg", ".jpeg")):
-                mime_type = "image/jpeg"
-            else:
-                st.warning(f"Unsupported file type: {filename}")
-                continue
 
-            try:
-                result = processor.process_invoice(file_bytes, mime_type)
+                try:
+                    result = processor.process_invoice(file_bytes, mime_type)
 
-                if result:
-                    result['ai_version'] = CURRENT_AI_VERSION
-                    save_invoice_record(result, None, "SYSTEM")
-                    st.success(f"{filename} processed successfully!")
-                else:
-                    st.error(f"AI failed to process {filename}")
+                    if result:
+                        result['ai_version'] = CURRENT_AI_VERSION
+                        save_invoice_record(result, None, "SYSTEM")
 
-            except Exception as e:
-                st.error(f"Error processing {filename}")
-                st.write(str(e))
+                        st.success(f"{filename} processed successfully!")
+
+                        # ✅ Convert result to DataFrame
+                        result_df = pd.DataFrame([result])
+
+                        # ✅ Show in Streamlit
+                        st.subheader("📊 Extracted Invoice Data")
+                        st.dataframe(result_df)
+
+                        # ✅ Create Excel file
+                        excel_data = export_to_excel(result_df)
+
+                        st.download_button(
+                            label="📥 Download Result as Excel",
+                            data=excel_data,
+                            file_name="invoice_result.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        )
+
+                    else:
+                        st.error("AI failed to process invoice.")
+
+                except Exception as e:
+                    st.error("Error processing invoice")
+                    st.write(str(e))
 
         st.success("All invoices processed successfully!")
 # --- 🎨 VISUAL BADGE MAPPING ---
