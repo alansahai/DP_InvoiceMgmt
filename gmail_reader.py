@@ -7,6 +7,7 @@ SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
 
 
 def authenticate_gmail():
+
     client_config = {
         "web": {
             "client_id": st.secrets["gmail"]["web"]["client_id"],
@@ -18,32 +19,43 @@ def authenticate_gmail():
         }
     }
 
-    flow = Flow.from_client_config(client_config, SCOPES)
-    flow.redirect_uri = st.secrets["gmail"]["web"]["redirect_uris"][0]
+    # If already authenticated, reuse credentials
+    if "credentials" in st.session_state:
+        creds = st.session_state["credentials"]
+        return build("gmail", "v1", credentials=creds)
+
+    # Create flow only once and store it
+    if "flow" not in st.session_state:
+        flow = Flow.from_client_config(client_config, SCOPES)
+        flow.redirect_uri = st.secrets["gmail"]["web"]["redirect_uris"][0]
+        st.session_state["flow"] = flow
+    else:
+        flow = st.session_state["flow"]
 
     query_params = st.query_params
 
-    # 🔥 DEBUG VERSION — shows real Google error
+    # 🔥 Handle redirect from Google
     if "code" in query_params:
         try:
             flow.fetch_token(code=query_params["code"])
             credentials = flow.credentials
             st.session_state["credentials"] = credentials
+
+            # Cleanup
             st.query_params.clear()
+            del st.session_state["flow"]
+
+            return build("gmail", "v1", credentials=credentials)
+
         except Exception as e:
             st.error("FULL GOOGLE ERROR:")
             st.write(str(e))
             st.stop()
 
-    # If not authenticated yet
-    if "credentials" not in st.session_state:
-        auth_url, _ = flow.authorization_url(prompt='consent')
-        st.markdown(f"[Click here to authenticate Gmail]({auth_url})")
-        st.stop()
-
-    creds = st.session_state["credentials"]
-    service = build('gmail', 'v1', credentials=creds)
-    return service
+    # If not authenticated → show login link
+    auth_url, _ = flow.authorization_url(prompt="consent")
+    st.markdown(f"[Click here to authenticate Gmail]({auth_url})")
+    st.stop()
 
 
 def read_invoice_emails():
