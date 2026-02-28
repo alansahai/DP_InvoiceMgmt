@@ -1,3 +1,4 @@
+from gmail_reader import read_invoice_emails
 import streamlit as st
 import pandas as pd
 import time
@@ -48,7 +49,56 @@ def can_upload(): return user_role != "AUDITOR"
 def can_approve(): return user_role == "FINANCE_MANAGER"
 
 st.title("🛡️ AI-Powered Invoice Auditor")
+st.subheader("📩 Automatic Gmail Invoice Reader")
 
+if st.button("Fetch Invoices from Gmail"):
+    
+    st.info("Connecting to Gmail...")
+    invoices = read_invoice_emails()
+
+    if not invoices:
+        st.warning("No unread emails found.")
+    else:
+        invoice_files = [
+            (filename, file_bytes)
+            for filename, file_bytes in invoices
+            if filename.lower() == "invoice.pdf"
+        ]
+
+        if not invoice_files:
+            st.warning("No file named 'invoice.pdf' found.")
+        else:
+            filename, file_bytes = invoice_files[0]
+
+            st.write(f"Processing {filename}...")
+
+            try:
+                mime_type = "application/pdf"
+                data = processor.process_invoice(file_bytes, mime_type)
+
+                if not data:
+                    st.error("AI processing failed.")
+                    st.stop()
+
+                # Add AI version
+                data['ai_version'] = CURRENT_AI_VERSION
+
+                # Save into session like upload flow
+                st.session_state['data'] = data
+                st.session_state['file_bytes'] = file_bytes
+                st.session_state['mime_type'] = mime_type
+                st.session_state['url'] = None
+                st.session_state['audit_mode'] = False
+
+                st.success("Invoice processed successfully!")
+                time.sleep(1)
+                st.rerun()
+
+            except Exception as e:
+                st.error("Error processing invoice")
+                st.write(str(e))
+
+        st.success("All invoices processed successfully!")
 # --- 🎨 VISUAL BADGE MAPPING ---
 def get_stage_badge(stage):
     badges = {
@@ -307,30 +357,52 @@ if 'data' in st.session_state:
     
     with col1:
         st.subheader("Original Document")
-        if "pdf" in st.session_state['url']:
-             st.markdown(f"[View PDF]({st.session_state['url']})")
+
+    url = st.session_state.get("url")
+    file_bytes = st.session_state.get("file_bytes")
+    mime_type = st.session_state.get("mime_type")
+
+    # If uploaded file (has URL)
+    if url and isinstance(url, str):
+        if "pdf" in url.lower():
+            st.markdown(f"[View PDF]({url})")
         else:
-            st.image(st.session_state['url'], use_container_width=True)
-            
-        if can_edit() and 'file_bytes' in st.session_state:
-            st.markdown("---")
-            st.caption(f"Current Model: {data.get('ai_version', 'Unknown')}")
-            if st.button("🔄 Reprocess with Latest AI"):
-                with st.spinner(f"Re-running analysis with {CURRENT_AI_VERSION}..."):
-                    new_data = processor.process_invoice(st.session_state['file_bytes'], st.session_state['mime_type'])
-                    if new_data:
-                        new_data['ai_version'] = CURRENT_AI_VERSION
-                        new_data['reprocessed_at'] = datetime.now().isoformat()
-                        new_data.setdefault("explanations", {})
-                        
-                        # Preserve ID if reprocessing an existing invoice
-                        if data.get('id'):
-                            new_data['id'] = data.get('id')
-                            
-                        st.session_state['data'] = new_data
-                        st.success("Invoice re-analyzed!")
-                        time.sleep(1)
-                        st.rerun()
+            st.image(url, use_container_width=True)
+
+    # If Gmail file (no URL, only bytes)
+    elif file_bytes:
+        if mime_type == "application/pdf":
+            st.download_button(
+                "📄 Download Original PDF",
+                data=file_bytes,
+                file_name="invoice.pdf",
+                mime="application/pdf"
+            )
+        else:
+            st.write("Preview not available.")
+
+    # 🔄 Reprocess Block (KEEP THIS INSIDE col1)
+    if can_edit() and 'file_bytes' in st.session_state:
+        st.markdown("---")
+        st.caption(f"Current Model: {data.get('ai_version', 'Unknown')}")
+        if st.button("🔄 Reprocess with Latest AI"):
+            with st.spinner(f"Re-running analysis with {CURRENT_AI_VERSION}..."):
+                new_data = processor.process_invoice(
+                    st.session_state['file_bytes'],
+                    st.session_state['mime_type']
+                )
+                if new_data:
+                    new_data['ai_version'] = CURRENT_AI_VERSION
+                    new_data['reprocessed_at'] = datetime.now().isoformat()
+                    new_data.setdefault("explanations", {})
+
+                    if data.get('id'):
+                        new_data['id'] = data.get('id')
+
+                    st.session_state['data'] = new_data
+                    st.success("Invoice re-analyzed!")
+                    time.sleep(1)
+                    st.rerun()
     
     with col2:
         st.subheader("📝 Audit Results")
