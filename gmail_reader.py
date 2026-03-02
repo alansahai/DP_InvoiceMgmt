@@ -27,10 +27,10 @@ def authenticate_gmail():
     # Create flow only once and store it
     if "flow" not in st.session_state:
        flow = Flow.from_client_config(
-    client_config,
-    scopes=SCOPES,
-    redirect_uri=st.secrets["gmail"]["web"]["redirect_uris"][0]
-)
+           client_config,
+           scopes=SCOPES,
+           redirect_uri=st.secrets["gmail"]["web"]["redirect_uris"][0]
+        )
         st.session_state["flow"] = flow
     else:
         flow = st.session_state["flow"]
