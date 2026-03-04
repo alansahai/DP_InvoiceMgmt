@@ -1,0 +1,123 @@
+E. Q&A Cheat Sheet
+
+How is this different from generic OCR?
+We combine extraction with trust scoring, compliance checks, duplicate controls, and workflow routing.
+How do you prevent hallucinated AI outputs?
+Structured JSON schema, confidence thresholds, validation rules, and explicit fail states.
+What if vendors use inconsistent formats?
+GenAI handles format variability; rules normalize and flag inconsistencies.
+How do you detect duplicates reliably?
+SHA-256 document hash + business-key checks (vendor/date/amount, invoice number where available).
+Can this scale beyond demo?
+Yes—modular pipeline, stateless processing, DB-backed audit trail, and webhook integration path.
+How secure is it?
+Env-based secrets, no hardcoded credentials, and controlled data flow/storage.
+What happens on extraction failure?
+No silent fallback; explicit FAILED status and review/ retry path.
+How do finance teams trust decisions?
+Trust Panel exposes confidence, scores, reason codes, and routing rationale.
+What ROI can a company expect?
+Major cycle-time reduction, lower manual errors, and fewer duplicate payouts.
+What’s next after hackathon?
+Pilot with one AP inbox, collect precision/latency metrics, then expand connectors and policy packs.
+
+You are a senior Python backend engineer.
+
+I have a working AI-powered invoice processing prototype built in Streamlit.
+It includes:
+- Email ingestion
+- OCR + GenAI extraction
+- Compliance scoring
+- Risk scoring
+- Duplicate detection using SHA-256 document_hash
+- Routing logic (Review Queue vs Ready for Finance Manager)
+- Supabase DB integration
+- Trust Panel metrics
+
+I want to fully migrate this into a production-style FastAPI application.
+DO NOT use React.
+Use server-rendered HTML (Jinja2) with Bootstrap CDN.
+
+GOAL:
+Convert entire project from Streamlit into structured FastAPI architecture.
+
+Requirements:
+
+1️⃣ Project Structure
+Create clean folders:
+- main.py
+- api/
+- services/
+- db/
+- templates/
+- static/
+
+2️⃣ API Endpoints
+Implement:
+GET /health
+POST /api/upload-invoice
+POST /api/ingest-email
+GET /api/invoices
+GET /api/invoice/{id}
+POST /api/route/{id}
+
+3️⃣ Services Layer
+Move logic into:
+- ocr_service.py
+- extraction_service.py
+- compliance_engine.py
+- risk_engine.py
+- ingestion_service.py
+
+Ensure:
+- No silent fallback extraction
+- Explicit FAILED states
+- Deterministic duplicate detection (SHA-256)
+- Risk score and compliance score logic preserved
+
+4️⃣ Database Layer
+Create repository abstraction:
+- create_invoice()
+- get_invoice()
+- list_invoices()
+- check_duplicate_hash()
+- update_route()
+
+5️⃣ UI (Jinja2)
+Build:
+- dashboard.html (metrics + health + counters)
+- invoice_detail.html (Trust Panel with scores and reason codes)
+- review_queue.html
+
+Use Bootstrap for clean enterprise layout.
+No Streamlit references.
+
+6️⃣ Health Monitoring
+Add ingestion health state:
+- last poll
+- last success
+- last error
+- failed count
+
+Expose via /health endpoint and show in dashboard.
+
+7️⃣ Dockerize
+Create:
+- Dockerfile
+- requirements.txt
+- .env.example
+
+8️⃣ Remove Streamlit
+Delete all Streamlit dependencies and files.
+Ensure app runs with:
+uvicorn main:app --reload
+
+Deliver:
+- Full working FastAPI app
+- Clean separation of concerns
+- Production-style structure
+- Clear error handling
+- No fake/demo fallbacks
+
+
+before that, move the existinf file to afolder names "mail imap streamlit version" then you do this process.
